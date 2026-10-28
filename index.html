@@ -1,0 +1,406 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Рулетка Да или Нет</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Layout: wheel on the left, result panel on the right; stacks into one column on phones. */
+  :root {
+    --bg: #E8EDF0;
+    --fg: #0F1B25;
+    --muted: #4B5C69;
+    --panel: #F4F7F9;
+    --line: #C3CFD7;
+    --yes-a: #1E9C76;
+    --yes-b: #33BA8F;
+    --no-a: #D8503F;
+    --no-b: #EE6B58;
+    --yes-ink: #0C7656;
+    --no-ink: #B03726;
+    --font-display: "Unbounded", "Arial Black", system-ui, sans-serif;
+    --font-body: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0D1318;
+      --fg: #E7EFF4;
+      --muted: #92A4B1;
+      --panel: #151D24;
+      --line: #2A3743;
+      --yes-a: #1C8F6B;
+      --yes-b: #2BAE84;
+      --no-a: #C6473A;
+      --no-b: #DD5F4E;
+      --yes-ink: #52D3A7;
+      --no-ink: #FF8C7A;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0D1318;
+    --fg: #E7EFF4;
+    --muted: #92A4B1;
+    --panel: #151D24;
+    --line: #2A3743;
+    --yes-a: #1C8F6B;
+    --yes-b: #2BAE84;
+    --no-a: #C6473A;
+    --no-b: #DD5F4E;
+    --yes-ink: #52D3A7;
+    --no-ink: #FF8C7A;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.5;
+    padding-block: 28px 40px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .page { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+
+  header { display: flex; flex-direction: column; gap: 8px; }
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  h1 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(26px, 5.5vw, 44px);
+    line-height: 1.1;
+    text-wrap: balance;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 32px;
+    align-items: center;
+  }
+  @media (max-width: 780px) {
+    .layout { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  }
+
+  .stage { position: relative; width: min(100%, 540px); margin: 0 auto; padding-top: 18px; }
+  canvas { display: block; width: 100%; aspect-ratio: 1; max-width: 100%; }
+  .pointer {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 0; height: 0;
+    transform: translateX(-50%);
+    border-left: 13px solid transparent;
+    border-right: 13px solid transparent;
+    border-top: 28px solid var(--fg);
+    z-index: 2;
+    filter: drop-shadow(0 2px 0 var(--bg));
+  }
+  .hub {
+    position: absolute;
+    left: 50%;
+    top: calc(18px + (100% - 18px) / 2);
+    width: 26%;
+    aspect-ratio: 1;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: var(--panel);
+    border: 3px solid var(--fg);
+    display: grid;
+    place-items: center;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(14px, 3.6vw, 26px);
+    z-index: 1;
+  }
+  .hub.yes { color: var(--yes-ink); }
+  .hub.no { color: var(--no-ink); }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    min-width: 0;
+  }
+  .label { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .answer {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(40px, 9vw, 56px);
+    line-height: 1;
+    margin: 6px 0 4px;
+    min-height: 64px;
+    display: flex;
+    align-items: center;
+    overflow-wrap: anywhere;
+  }
+  .answer.yes { color: var(--yes-ink); }
+  .answer.no { color: var(--no-ink); }
+  .answer.idle { color: var(--muted); font-size: 28px; }
+  .detail { margin: 0; color: var(--muted); min-height: 1.5em; font-variant-numeric: tabular-nums; }
+
+  button#spin {
+    font: inherit;
+    font-weight: 600;
+    font-size: 17px;
+    background: var(--fg);
+    color: var(--bg);
+    border: 0;
+    border-radius: 10px;
+    padding: 14px 18px;
+    cursor: pointer;
+  }
+  button#spin:disabled { opacity: 0.55; cursor: progress; }
+  button#spin:focus-visible { outline: 3px solid var(--yes-b); outline-offset: 3px; }
+
+  .tally { display: flex; gap: 12px; }
+  .tally div {
+    flex: 1;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .tally b { font-family: var(--font-display); font-size: 22px; font-variant-numeric: tabular-nums; }
+  .tally .y b { color: var(--yes-ink); }
+  .tally .n b { color: var(--no-ink); }
+  .tally span { font-size: 13px; color: var(--muted); }
+
+  .history { display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px; }
+  .chip {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+  }
+  .chip.yes { color: var(--yes-ink); }
+  .chip.no { color: var(--no-ink); }
+  .empty { font-size: 14px; color: var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div class="page">
+  <header>
+    <h1>Рулетка Да или Нет</h1>
+  </header>
+
+  <div class="layout">
+    <div class="stage">
+      <div class="pointer" aria-hidden="true"></div>
+      <canvas id="wheel" width="540" height="540" role="img" aria-label="Колесо из 100 секторов: 50 «Да» и 50 «Нет»"></canvas>
+      <div class="hub" id="hub" aria-hidden="true">?</div>
+    </div>
+
+    <div class="panel">
+      <div>
+        <div class="label">Ответ</div>
+        <div class="answer idle" id="answer" aria-live="polite">Крутите</div>
+        <p class="detail" id="detail">Нажмите кнопку, и колесо выберет один из 100 пунктов.</p>
+      </div>
+
+      <button id="spin" type="button">Крутить</button>
+
+      <div class="tally" aria-label="Сколько раз выпало">
+        <div class="y"><b id="cntYes">0</b><span>Да</span></div>
+        <div class="n"><b id="cntNo">0</b><span>Нет</span></div>
+      </div>
+
+      <div>
+        <div class="label" style="margin-bottom:8px">Последние ответы</div>
+        <div class="history" id="history"><span class="empty">Пока пусто</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var N = 100;
+  var SEG = (2 * Math.PI) / N;
+  var TWO_PI = 2 * Math.PI;
+
+  // 1. Список из 100 пунктов: «да» и «нет» строго по очереди, 50 и 50.
+  var items = [];
+  for (var i = 0; i < 50; i++) { items.push("yes"); items.push("no"); }
+
+  var canvas = document.getElementById("wheel");
+  var ctx = canvas.getContext("2d");
+  var hub = document.getElementById("hub");
+  var answerEl = document.getElementById("answer");
+  var detailEl = document.getElementById("detail");
+  var btn = document.getElementById("spin");
+  var historyEl = document.getElementById("history");
+  var cntYes = document.getElementById("cntYes");
+  var cntNo = document.getElementById("cntNo");
+
+  var rotation = 0;       // текущий поворот колеса в радианах
+  var spinning = false;
+  var winner = -1;        // номер выпавшего сектора
+  var counts = { yes: 0, no: 0 };
+  var history = [];
+
+  function css(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
+  // 2. Рисуем колесо: 100 секторов, цвет зависит от «да/нет», оттенок чуть меняется через каждую пару.
+  function draw() {
+    var dpr = window.devicePixelRatio || 1;
+    var size = canvas.clientWidth || 540;
+    var px = Math.round(size * dpr);
+    if (canvas.width !== px) { canvas.width = px; canvas.height = px; }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, size, size);
+
+    var c = size / 2;
+    var r = c - 4;
+    var colors = {
+      yes: [css("--yes-a"), css("--yes-b")],
+      no: [css("--no-a"), css("--no-b")]
+    };
+    var line = css("--panel");
+
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = line;
+    for (var i = 0; i < N; i++) {
+      var a0 = -Math.PI / 2 + rotation + i * SEG;
+      ctx.beginPath();
+      ctx.moveTo(c, c);
+      ctx.arc(c, c, r, a0, a0 + SEG);
+      ctx.closePath();
+      ctx.fillStyle = colors[items[i]][Math.floor(i / 2) % 2];
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // Подсветка выпавшего сектора
+    if (winner >= 0) {
+      var w0 = -Math.PI / 2 + rotation + winner * SEG;
+      ctx.beginPath();
+      ctx.moveTo(c, c);
+      ctx.arc(c, c, r, w0, w0 + SEG);
+      ctx.closePath();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = css("--fg");
+      ctx.stroke();
+    }
+
+    // Внешний обод
+    ctx.beginPath();
+    ctx.arc(c, c, r, 0, TWO_PI);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = css("--fg");
+    ctx.stroke();
+  }
+
+  // 3. Какой сектор сейчас под стрелкой (стрелка смотрит вверх).
+  function indexAt(rot) {
+    var a = ((-rot) % TWO_PI + TWO_PI) % TWO_PI;
+    return Math.floor(a / SEG) % N;
+  }
+
+  function label(kind) { return kind === "yes" ? "Да" : "Нет"; }
+
+  function renderHistory() {
+    historyEl.innerHTML = "";
+    if (!history.length) {
+      var e = document.createElement("span");
+      e.className = "empty";
+      e.textContent = "Пока пусто";
+      historyEl.appendChild(e);
+      return;
+    }
+    history.forEach(function (kind) {
+      var s = document.createElement("span");
+      s.className = "chip " + kind;
+      s.textContent = label(kind);
+      historyEl.appendChild(s);
+    });
+  }
+
+  function finish() {
+    spinning = false;
+    btn.disabled = false;
+    btn.textContent = "Крутить ещё раз";
+    winner = indexAt(rotation);
+    var kind = items[winner];
+
+    counts[kind] += 1;
+    cntYes.textContent = counts.yes;
+    cntNo.textContent = counts.no;
+
+    history.unshift(kind);
+    if (history.length > 14) history.pop();
+    renderHistory();
+
+    answerEl.className = "answer " + kind;
+    answerEl.textContent = label(kind);
+    detailEl.textContent = "Выпал пункт " + (winner + 1) + " из 100";
+    hub.className = "hub " + kind;
+    hub.textContent = label(kind);
+    draw();
+  }
+
+  // 4. Вращение: несколько полных оборотов плюс случайный остаток, плавное замедление.
+  function spin() {
+    if (spinning) return;
+    spinning = true;
+    winner = -1;
+    btn.disabled = true;
+    hub.className = "hub";
+    hub.textContent = "…";
+    answerEl.className = "answer idle";
+    answerEl.textContent = "Крутится";
+    detailEl.textContent = "";
+
+    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var start = rotation;
+    var turns = 5 + Math.floor(Math.random() * 3);
+    var target = start + turns * TWO_PI + Math.random() * TWO_PI;
+    var dur = reduce ? 700 : 5200;
+    var t0 = performance.now();
+
+    function frame(now) {
+      var t = Math.min(1, (now - t0) / dur);
+      var e = 1 - Math.pow(1 - t, 4);
+      rotation = start + (target - start) * e;
+      draw();
+      if (t < 1) requestAnimationFrame(frame);
+      else finish();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  btn.addEventListener("click", spin);
+  window.addEventListener("resize", draw);
+
+  // Перерисовать колесо при смене светлой/тёмной темы
+  if (window.matchMedia) {
+    var mq = window.matchMedia("(prefers-color-scheme: dark)");
+    if (mq.addEventListener) mq.addEventListener("change", draw);
+  }
+  new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  draw();
+})();
+</script>
+
+</body></html>
